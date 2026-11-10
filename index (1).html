@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شاشة البيت</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400;600&display=swap">
+<style>
+/*
+  شاشة تلفاز 16:9 بمشهد ليلي واحد.
+  الألوان مكتوبة مباشرة (بدون متغيرات CSS) لتعمل على متصفحات LG القديمة:
+    الخلفية  #0b1a20   حبر أزرق مخضر
+    السطح    #12262e
+    النص     #ece6d6   عاجي هادئ
+    الخافت   #8ea3a6
+    المميز   #d1ab62   نحاسي
+  التخطيط: شريط التاريخ، ثم الساعة، ثم صف الصلوات، ثم شريط التلاوة.
+  المقاسات بوحدة vh لتتناسب مع أي حجم شاشة.
+*/
+html, body { height: 100%; margin: 0; padding: 0; }
+body {
+  background: #0b1a20;
+  color: #ece6d6;
+  font-family: "Reem Kufi", "Noto Kufi Arabic", "Geeza Pro", Tahoma, Arial, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+}
+#stage {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+  padding: 4vh 4vw;
+  box-sizing: border-box;
+  -webkit-transition: -webkit-transform 4s ease; transition: transform 4s ease;
+}
+
+/* الشريط العلوي */
+#top {
+  display: -webkit-flex; display: flex;
+  -webkit-justify-content: space-between; justify-content: space-between;
+  -webkit-align-items: baseline; align-items: baseline;
+  font-size: 4vh;
+}
+#hijri { color: #d1ab62; }
+#greg { color: #ece6d6; }
+#place { color: #8ea3a6; font-size: 3vh; margin-top: 0.6vh; }
+.side { max-width: 48%; }
+.side-left { text-align: left; }
+
+/* الساعة */
+#middle {
+  -webkit-flex: 1 1 auto; flex: 1 1 auto;
+  display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+  -webkit-justify-content: center; justify-content: center;
+  -webkit-align-items: center; align-items: center;
+}
+#clock { direction: ltr; font-size: 27vh; line-height: 1; font-weight: 600; white-space: nowrap; }
+#clock .d { display: inline-block; width: 0.62em; text-align: center; }
+#clock .c { display: inline-block; width: 0.3em; text-align: center; color: #d1ab62; position: relative; top: -0.06em; }
+#clock .sec { font-size: 0.34em; color: #8ea3a6; font-weight: 400; margin-left: 0.25em; }
+#clock .sec .d { width: 0.62em; }
+#next { margin-top: 2.5vh; font-size: 4.4vh; color: #8ea3a6; }
+#next b { color: #ece6d6; font-weight: 600; }
+#next .cd { direction: ltr; display: inline-block; color: #d1ab62; min-width: 4.2em; text-align: center; }
+
+/* صف الصلوات */
+#prayers { display: -webkit-flex; display: flex; margin: 0 -0.6vw; }
+.p {
+  -webkit-flex: 1 1 0; flex: 1 1 0;
+  margin: 0 0.6vw;
+  padding: 2vh 0 1.8vh;
+  text-align: center;
+  background: #12262e;
+  border-top: 0.5vh solid #1d3740;
+  border-radius: 0.8vh;
+}
+.p .n { font-size: 3.4vh; color: #8ea3a6; }
+.p .t { direction: ltr; font-size: 5.6vh; margin-top: 0.4vh; }
+.p.sun .t { color: #8ea3a6; }
+.p.now { border-top-color: #d1ab62; background: #17313a; }
+.p.now .n { color: #d1ab62; }
+.p.done .t, .p.done .n { color: #5d7275; }
+
+/* شريط التلاوة */
+#player {
+  margin-top: 2.6vh;
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+}
+#reciter { font-size: 3vh; color: #8ea3a6; white-space: nowrap; margin-left: 1.5vw; }
+.s {
+  font-family: inherit;
+  font-size: 3.6vh;
+  color: #ece6d6;
+  background: #12262e;
+  border: 0.3vh solid #2a4750;
+  border-radius: 5vh;
+  padding: 1vh 2.2vw 1.4vh;
+  margin-left: 1vw;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.s:focus { outline: none; border-color: #ece6d6; }
+.s:hover { border-color: #8ea3a6; }
+.s.on { background: #d1ab62; border-color: #d1ab62; color: #0b1a20; }
+.s .i { display: inline-block; width: 1.1em; direction: ltr; text-align: center; font-size: 0.8em; }
+#track {
+  -webkit-flex: 1 1 auto; flex: 1 1 auto;
+  height: 1vh; background: #1d3740; border-radius: 1vh;
+  margin: 0 1vw; overflow: hidden; direction: ltr;
+}
+#fill { height: 100%; width: 0; background: #d1ab62; }
+#status { direction: ltr; font-size: 3vh; color: #8ea3a6; white-space: nowrap; min-width: 9em; text-align: left; }
+#status.msg { direction: rtl; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <div id="top">
+    <div class="side">
+      <div id="hijri"></div>
+      <div id="place"></div>
+    </div>
+    <div class="side side-left">
+      <div id="greg"></div>
+    </div>
+  </div>
+
+  <div id="middle">
+    <div id="clock"></div>
+    <div id="next"></div>
+  </div>
+
+  <div id="prayers"></div>
+
+  <div id="player">
+    <div id="reciter">تلاوة فارس عباد</div>
+    <button class="s" id="s0" type="button"><span class="i">&#9654;</span> سورة البقرة</button>
+    <button class="s" id="s1" type="button"><span class="i">&#9654;</span> سورة يوسف</button>
+    <button class="s" id="s2" type="button"><span class="i">&#9654;</span> سورة الكهف</button>
+    <div id="track"><div id="fill"></div></div>
+    <div id="status"></div>
+  </div>
+
+</div>
+<audio id="audio" preload="none"></audio>
+
+<script>
+/* ================= الإعدادات: عدّل هنا فقط ================= */
+var CONFIG = {
+  city: 'فانتا',
+  lat: 60.2934,
+  lng: 25.0378,
+  fajrAngle: 18,        /* رابطة العالم الإسلامي */
+  ishaAngle: 17,
+  asrShadow: 1,         /* 1 للجمهور، 2 للحنفي */
+  /* تعديل يدوي بالدقائق لمطابقة تقويم مسجدك (موجب = تأخير) */
+  offsets: { fajr: 1, sunrise: -3, dhuhr: 2, asr: 1, maghrib: 5, isha: 0 },
+  hijriOffset: -1,      /* تعديل التاريخ الهجري بالأيام */
+  audioBase: 'https://server8.mp3quran.net/frs_a/',
+  surahs: [
+    { name: 'البقرة', file: '002.mp3' },
+    { name: 'يوسف',  file: '012.mp3' },
+    { name: 'الكهف', file: '018.mp3' }
+  ]
+};
+/* ========================================================== */
+
+function $(id) { return document.getElementById(id); }
+function two(n) { return (n < 10 ? '0' : '') + n; }
+
+/* ---------- حساب أوقات الصلاة (فلكي، بدون إنترنت) ---------- */
+var D2R = Math.PI / 180;
+function dsin(d) { return Math.sin(d * D2R); }
+function dcos(d) { return Math.cos(d * D2R); }
+function dtan(d) { return Math.tan(d * D2R); }
+function darcsin(x) { return Math.asin(x) / D2R; }
+function darccos(x) { return Math.acos(x) / D2R; }
+function darctan2(y, x) { return Math.atan2(y, x) / D2R; }
+function darccot(x) { return Math.atan(1 / x) / D2R; }
+function fix(a, b) { a = a - b * Math.floor(a / b); return a < 0 ? a + b : a; }
+
+function julian(y, m, d) {
+  if (m <= 2) { y -= 1; m += 12; }
+  var A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524.5;
+}
+function sunPos(jd) {
+  var D = jd - 2451545.0;
+  var g = fix(357.529 + 0.98560028 * D, 360);
+  var q = fix(280.459 + 0.98564736 * D, 360);
+  var L = fix(q + 1.915 * dsin(g) + 0.020 * dsin(2 * g), 360);
+  var e = 23.439 - 0.00000036 * D;
+  var RA = fix(darctan2(dcos(e) * dsin(L), dcos(L)) / 15, 24);
+  return { decl: darcsin(dsin(e) * dsin(L)), eqt: q / 15 - RA };
+}
+function prayerTimes(date) {
+  var lat = CONFIG.lat, lng = CONFIG.lng;
+  var tz = -new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12).getTimezoneOffset() / 60;
+  var jd = julian(date.getFullYear(), date.getMonth() + 1, date.getDate()) - lng / (15 * 24);
+
+  function midDay(t) { return fix(12 - sunPos(jd + t).eqt, 24); }
+  function angleTime(angle, t, before) {
+    var decl = sunPos(jd + t).decl;
+    var x = (-dsin(angle) - dsin(decl) * dsin(lat)) / (dcos(decl) * dcos(lat));
+    var h = darccos(x) / 15;            /* NaN إذا لم تبلغ الشمس هذه الزاوية */
+    return midDay(t) + (before ? -h : h);
+  }
+  function asrTime(factor, t) {
+    var decl = sunPos(jd + t).decl;
+    var angle = -darccot(factor + dtan(Math.abs(lat - decl)));
+    return angleTime(angle, t, false);
+  }
+
+  var t = {
+    fajr: angleTime(CONFIG.fajrAngle, 5 / 24, true),
+    sunrise: angleTime(0.833, 6 / 24, true),
+    dhuhr: midDay(12 / 24),
+    asr: asrTime(CONFIG.asrShadow, 13 / 24),
+    maghrib: angleTime(0.833, 18 / 24, false),
+    isha: angleTime(CONFIG.ishaAngle, 18 / 24, false)
+  };
+  var k;
+  for (k in t) { if (t.hasOwnProperty(k)) { t[k] += tz - lng / 15; } }
+
+  /* خطوط العرض العالية: طريقة جزء الليل بحسب الزاوية (صيف فنلندا) */
+  var night = fix(t.sunrise - t.maghrib, 24);
+  var fPortion = CONFIG.fajrAngle / 60 * night;
+  var iPortion = CONFIG.ishaAngle / 60 * night;
+  if (isNaN(t.fajr) || fix(t.sunrise - t.fajr, 24) > fPortion) { t.fajr = t.sunrise - fPortion; }
+  if (isNaN(t.isha) || fix(t.isha - t.maghrib, 24) > iPortion) { t.isha = t.maghrib + iPortion; }
+
+  /* إلى دقائق من منتصف الليل + التعديل اليدوي */
+  var out = {};
+  for (k in t) {
+    if (t.hasOwnProperty(k)) { out[k] = Math.round(t[k] * 60) + (CONFIG.offsets[k] || 0); }
+  }
+  return out;
+}
+
+/* ---------- التاريخ ---------- */
+var DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+var MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+function gregText(d) {
+  return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+function hijriText(d) {
+  try {
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (CONFIG.hijriOffset || 0), 12);
+    var s = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn',
+      { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+    /* إذا لم يدعم المتصفح التقويم الهجري يعيد سنة ميلادية: نخفيه */
+    var m = s.match(/(\d{4})/);
+    if (!m || parseInt(m[1], 10) > 1900) { return ''; }
+    return s.replace(/\s*هـ\s*$/, '') + ' هـ';
+  } catch (e) { return ''; }
+}
+
+/* ---------- العرض ---------- */
+var ORDER = [
+  { k: 'fajr', n: 'الفجر' },
+  { k: 'sunrise', n: 'الشروق', sun: true },
+  { k: 'dhuhr', n: 'الظهر' },
+  { k: 'asr', n: 'العصر' },
+  { k: 'maghrib', n: 'المغرب' },
+  { k: 'isha', n: 'العشاء' }
+];
+var dayKey = '', today = null, tomorrow = null, lateIsha = 0;
+
+function hm(mins) {
+  mins = fix(mins, 1440);
+  return two(Math.floor(mins / 60)) + ':' + two(mins % 60);
+}
+function digits(str) {
+  var h = '', i, ch;
+  for (i = 0; i < str.length; i++) {
+    ch = str.charAt(i);
+    h += ch === ':' ? '<span class="c">:</span>' : '<span class="d">' + ch + '</span>';
+  }
+  return h;
+}
+function buildDay(now) {
+  today = prayerTimes(now);
+  tomorrow = prayerTimes(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  var y = prayerTimes(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  lateIsha = y.isha > 1440 ? (y.isha - 1440) * 60 : 0;
+  var h = '', i;
+  for (i = 0; i < ORDER.length; i++) {
+    h += '<div class="p' + (ORDER[i].sun ? ' sun' : '') + '" id="p-' + ORDER[i].k + '">' +
+         '<div class="n">' + ORDER[i].n + '</div>' +
+         '<div class="t">' + hm(today[ORDER[i].k]) + '</div></div>';
+  }
+  $('prayers').innerHTML = h;
+  $('greg').innerHTML = gregText(now);
+  $('hijri').innerHTML = hijriText(now);
+  $('place').innerHTML = 'أوقات الصلاة في ' + CONFIG.city;
+}
+function tick() {
+  var now = new Date();
+  var key = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate();
+  if (key !== dayKey) { dayKey = key; buildDay(now); }
+
+  $('clock').innerHTML = digits(two(now.getHours()) + ':' + two(now.getMinutes())) +
+    '<span class="sec">' + digits(two(now.getSeconds())) + '</span>';
+
+  var secs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  var nextName = '', nextKey = '', left = 0, i, o, el, t;
+  for (i = 0; i < ORDER.length; i++) {
+    o = ORDER[i]; t = today[o.k] * 60;
+    el = $('p-' + o.k);
+    el.className = 'p' + (o.sun ? ' sun' : '') + (t <= secs ? ' done' : '');
+    if (!nextKey && !o.sun && t > secs) { nextKey = o.k; nextName = o.n; left = t - secs; }
+  }
+  if (lateIsha > secs) {
+    /* صيفاً قد يقع عشاء الأمس بعد منتصف الليل */
+    nextName = 'العشاء'; left = lateIsha - secs;
+  } else if (nextKey) {
+    $('p-' + nextKey).className = 'p now';
+  } else {
+    nextName = 'الفجر';
+    left = 86400 - secs + tomorrow.fajr * 60;
+  }
+  var lh = Math.floor(left / 3600), lm = Math.floor((left % 3600) / 60), ls = left % 60;
+  $('next').innerHTML = 'الصلاة القادمة <b>' + nextName + '</b> بعد <span class="cd">' +
+    lh + ':' + two(lm) + ':' + two(ls) + '</span>';
+
+  /* إزاحة خفيفة كل دقيقة لحماية شاشات OLED من ثبات الصورة */
+  if (now.getSeconds() === 0 || !tick.shifted) {
+    tick.shifted = true;
+    var a = now.getMinutes() % 4;
+    var dx = [0, 6, 0, -6][a], dy = [0, 4, 8, 4][a] - 4;
+    var tr = 'translate(' + dx + 'px,' + dy + 'px)';
+    $('stage').style.webkitTransform = tr;
+    $('stage').style.transform = tr;
+  }
+}
+
+/* ---------- التلاوة ---------- */
+var audio = $('audio');
+var current = -1, triedHttp = false, wantSeek = 0;
+
+function store(k, v) { try { localStorage.setItem('tv-' + k, String(v)); } catch (e) {} }
+function load(k) { try { return localStorage.getItem('tv-' + k); } catch (e) { return null; } }
+
+function clockTime(s) {
+  if (!isFinite(s) || s < 0) { return '--:--'; }
+  s = Math.floor(s);
+  var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return (h ? h + ':' + two(m) : m) + ':' + two(x);
+}
+function setStatus(text, isMsg) {
+  var el = $('status');
+  el.className = isMsg ? 'msg' : '';
+  el.innerHTML = text;
+}
+function paint() {
+  var i, b, playing;
+  for (i = 0; i < CONFIG.surahs.length; i++) {
+    b = $('s' + i);
+    playing = (i === current && !audio.paused);
+    b.className = 's' + (i === current ? ' on' : '');
+    b.firstChild.innerHTML = playing ? '&#10073;&#10073;' : '&#9654;';
+  }
+}
+function start(i, resumeAt) {
+  current = i; triedHttp = false; wantSeek = resumeAt || 0;
+  audio.src = CONFIG.audioBase + CONFIG.surahs[i].file;
+  store('surah', i);
+  setStatus('جارٍ التحميل…', true);
+  play();
+}
+function play() {
+  var p;
+  try { p = audio.play(); } catch (e) { p = null; }
+  if (p && p['catch']) {
+    p['catch'](function () { setStatus('اضغط على السورة للتشغيل', true); paint(); });
+  }
+  paint();
+}
+function choose(i) {
+  if (i === current) {
+    if (audio.paused) { play(); } else { audio.pause(); }
+    return;
+  }
+  var saved = parseFloat(load('pos-' + i));
+  start(i, isFinite(saved) && saved > 5 ? saved : 0);
+}
+function bind(i) {
+  $('s' + i).onclick = function () { choose(i); };
+}
+bind(0); bind(1); bind(2);
+
+audio.addEventListener('loadedmetadata', function () {
+  if (wantSeek > 0 && wantSeek < audio.duration - 10) {
+    try { audio.currentTime = wantSeek; } catch (e) {}
+  }
+  wantSeek = 0;
+});
+audio.addEventListener('timeupdate', function () {
+  var d = audio.duration, c = audio.currentTime;
+  if (isFinite(d) && d > 0) { $('fill').style.width = (c / d * 100) + '%'; }
+  setStatus(clockTime(c) + ' / ' + clockTime(d));
+  if (current >= 0 && Math.floor(c) % 10 === 0) { store('pos-' + current, Math.floor(c)); }
+});
+audio.addEventListener('play', paint);
+audio.addEventListener('pause', paint);
+audio.addEventListener('ended', function () {
+  store('pos-' + current, 0);
+  start((current + 1) % CONFIG.surahs.length, 0);   /* ينتقل للسورة التالية */
+});
+audio.addEventListener('error', function () {
+  if (current < 0) { return; }
+  /* بعض التلفزيونات القديمة ترفض شهادات https الحديثة: نجرب http مرة واحدة */
+  if (!triedHttp && audio.src.indexOf('https://') === 0) {
+    triedHttp = true;
+    audio.src = audio.src.replace('https://', 'http://');
+    play();
+    return;
+  }
+  setStatus('تعذّر تشغيل التلاوة، تحقق من الإنترنت', true);
+  paint();
+});
+
+/* أسهم الريموت: يمين/يسار للتنقل بين السور، OK للتشغيل والإيقاف */
+document.addEventListener('keydown', function (e) {
+  var k = e.keyCode, f = -1, i;
+  if (k !== 37 && k !== 39) { return; }
+  for (i = 0; i < 3; i++) { if (document.activeElement === $('s' + i)) { f = i; } }
+  if (f < 0) { f = current >= 0 ? current : 0; }
+  else { f = (f + (k === 37 ? 1 : 2)) % 3; }   /* الواجهة من اليمين لليسار */
+  $('s' + f).focus();
+  e.preventDefault();
+});
+
+/* تجهيز السورة الأخيرة دون تشغيل تلقائي */
+(function () {
+  var last = parseInt(load('surah'), 10);
+  var i = (last >= 0 && last < 3) ? last : 0;
+  var pos = parseFloat(load('pos-' + i));
+  setStatus(isFinite(pos) && pos > 5 ? 'متابعة من ' + '<span dir="ltr">' + clockTime(pos) + '</span>' : 'اختر سورة للاستماع', true);
+  try { $('s' + i).focus(); } catch (e) {}
+})();
+
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
