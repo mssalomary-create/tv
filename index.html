@@ -43,6 +43,22 @@ body {
   font-size: 4vh;
 }
 #hijri { color: #d1ab62; }
+#ramadan {
+  -webkit-flex: 1 1 auto; flex: 1 1 auto;
+  text-align: center;
+  -webkit-align-self: flex-start; align-self: flex-start;
+  margin-top: 0.4vh;
+}
+#ramadan span {
+  display: inline-block;
+  font-size: 3.4vh;
+  color: #ece6d6;
+  background: #12262e;
+  border: 0.3vh solid #2a4750;
+  border-radius: 5vh;
+  padding: 0.8vh 2vw 1.1vh;
+}
+#ramadan b { color: #d1ab62; font-weight: 600; margin: 0 0.25em; }
 #greg { color: #ece6d6; }
 #place { color: #8ea3a6; font-size: 3vh; margin-top: 0.6vh; }
 .side { max-width: 48%; }
@@ -127,6 +143,7 @@ body {
       <div id="hijri"></div>
       <div id="place"></div>
     </div>
+    <div id="ramadan"></div>
     <div class="side side-left">
       <div id="greg"></div>
       <button class="s" id="adhanBtn" type="button"></button>
@@ -164,10 +181,10 @@ var CONFIG = {
   asrShadow: 1,         /* 1 للجمهور، 2 للحنفي */
   /* تعديل يدوي بالدقائق لمطابقة تقويم مسجدك (موجب = تأخير) */
   offsets: { fajr: 1, sunrise: -3, dhuhr: 2, asr: 1, maghrib: 5, isha: 0 },
-  hijriOffset: -1,      /* تعديل التاريخ الهجري بالأيام */
-  /* الأذان: إن رفعت ملفاً باسم adhan.mp3 أو adhan-fajr.mp3 بجانب الصفحة يُستخدم هو أولاً */
-  adhan: ['adhan.mp3', 'https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Hamad%20Deghreri.mp3'],
-  adhanFajr: ['adhan-fajr.mp3', 'https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Al-fajer%20-%20Malek%20chebae.mp3'],
+  hijriOffset: 0,      /* تعديل التاريخ الهجري بالأيام */
+  /* الأذان: ملف adhan.mp3 المرفوع بجانب الصفحة (منصور الزهراني)، ويُستخدم للفجر أيضاً */
+  adhan: ['adhan.mp3'],
+  adhanFajr: ['adhan.mp3'],
   audioBase: 'https://server8.mp3quran.net/frs_a/',
   surahs: [
     { name: 'البقرة', file: '002.mp3' },
@@ -267,6 +284,47 @@ function hijriText(d) {
   } catch (e) { return ''; }
 }
 
+/* ---------- عداد رمضان (من التقويم الهجري نفسه، بنفس تعديل التاريخ أعلاه) ---------- */
+function hijriMD(d) {
+  try {
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (CONFIG.hijriOffset || 0), 12);
+    var f = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    var m, dd, y, i, parts;
+    if (f.formatToParts) {
+      parts = f.formatToParts(d);
+      for (i = 0; i < parts.length; i++) {
+        if (parts[i].type === 'month') { m = parseInt(parts[i].value, 10); }
+        if (parts[i].type === 'day') { dd = parseInt(parts[i].value, 10); }
+        if (parts[i].type === 'year' || parts[i].type === 'relatedYear') { y = parseInt(parts[i].value, 10); }
+      }
+    } else {
+      var n = f.format(d).match(/\d+/g);
+      if (n && n.length >= 3) { m = +n[0]; dd = +n[1]; y = +n[2]; }
+    }
+    if (!m || !dd || !y || y > 1900) { return null; }   /* المتصفح لا يدعم التقويم الهجري */
+    return { m: m, d: dd };
+  } catch (e) { return null; }
+}
+function daysWord(n) {
+  if (n === 1) { return 'يوم واحد'; }
+  if (n === 2) { return 'يومان'; }
+  if (n <= 10) { return '<b>' + n + '</b> أيام'; }
+  return '<b>' + n + '</b> يوماً';
+}
+function ramadanText(now) {
+  var today = hijriMD(now);
+  if (!today) { return ''; }
+  if (today.m === 9) { return 'رمضان كريم · اليوم <b>' + today.d + '</b> من الشهر'; }
+  var i, h;
+  for (i = 1; i < 400; i++) {
+    h = hijriMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i));
+    if (h && h.m === 9 && h.d === 1) {
+      return i === 1 ? 'غداً أول أيام <b>رمضان</b>' : 'باقٍ على رمضان ' + daysWord(i);
+    }
+  }
+  return '';
+}
+
 /* ---------- العرض ---------- */
 var ORDER = [
   { k: 'fajr', n: 'الفجر' },
@@ -304,6 +362,8 @@ function buildDay(now) {
   $('prayers').innerHTML = h;
   $('greg').innerHTML = gregText(now);
   $('hijri').innerHTML = hijriText(now);
+  var rt = ramadanText(now);
+  $('ramadan').innerHTML = rt ? '<span>' + rt + '</span>' : '';
   $('place').innerHTML = 'أوقات الصلاة في ' + CONFIG.city;
 }
 function tick() {
